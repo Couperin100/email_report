@@ -1,0 +1,57 @@
+#!/usr/bin/python
+
+import fnmatch
+import os
+import smtplib
+import time
+
+suffixes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB']
+
+def humanreadable(nbytes):
+    if nbytes == 0: return '0 B'
+    i = 0
+    while nbytes >= 1024 and i < len(suffixes)-1:
+        nbytes /= 1024.
+        i += 1
+    f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
+    return '%s %s' % (f, suffixes[i])
+
+
+def sendemail(from_addr, to_addr_list, cc_addr_list,
+              subject, message,
+              login, password,
+              smtpserver='smtp.mysmtpserver.com:25'):
+    header  = 'From: %s\n' % from_addr
+    header += 'To: %s\n' % ','.join(to_addr_list)
+    header += 'Cc: %s\n' % ','.join(cc_addr_list)
+    header += 'Subject: %s\n\n' % subject
+    message = header + message
+
+    server = smtplib.SMTP(smtpserver)
+    server.starttls()
+    server.login(login,password)
+    problems = server.sendmail(from_addr, to_addr_list, message)
+    server.quit()
+
+
+matches = []
+path = "/Full/Path/For/Cron/"
+for root, dirnames, filenames in os.walk(path):
+  for filename in fnmatch.filter(filenames, '*_file_type_here'):
+      filepath = os.path.join(root, filename)
+      size = os.path.getsize(filepath)
+      matches.append(size)
+
+final_value = sum(matches)
+
+email_value = humanreadable(final_value)
+
+date = (time.strftime("%d/%m/%Y"))
+
+sendemail(from_addr    = 'from_address@somecompany.com',
+          to_addr_list = ['Jon.Doe@somecompany.com','Jane.Doe@somecompany.com'],
+          cc_addr_list = [''],
+          subject      = 'My_Company Report for ' + date,
+          message      = 'The Storage for My_Company is: ' + email_value,
+          login        = 'myusername',
+          password     = 'mypassword')
